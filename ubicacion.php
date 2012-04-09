@@ -7,7 +7,12 @@ Author: Ivan Pintado
 
 */
 
+
+
+
 class Ubicacion extends WP_Widget {
+	
+	
 
 	/**
 	 * Constructor del widget, indica el classname, la descripción
@@ -38,12 +43,23 @@ class Ubicacion extends WP_Widget {
 			}
 			
 		} else {
-		
-			$admin_style_url = WP_PLUGIN_URL . '/ubicacion/css/ubicacion-display.css';
-			$admin_style_file = WP_PLUGIN_DIR . '/ubicacion/css/ubicacion-display.css';
-			if(file_exists($admin_style_file)) {
-				wp_register_style('ubicacion-display-styles', $admin_style_url);
-				wp_enqueue_style('ubicacion-display-styles');
+				wp_enqueue_script('jquery');
+				$widget_style_file = WP_PLUGIN_DIR . '/ubicacion/css/ubicacion-display-widget.css';
+				$widget_style_url = WP_PLUGIN_URL . '/ubicacion/css/ubicacion-display-widget.css';
+				$mapa_style_file = WP_PLUGIN_DIR . '/ubicacion/css/ubicacion-display-mapa.css';
+				$mapa_style_url = WP_PLUGIN_URL . '/ubicacion/css/ubicacion-display-mapa.css';
+				if(file_exists($widget_style_file)) {
+					wp_register_style('widget-ubicacion-display-styles', $widget_style_url);
+					wp_enqueue_style('widget-ubicacion-display-styles');
+				if(file_exists($mapa_style_file)){
+						wp_register_style('mapa-ubicacion-display-style',$mapa_style_url);
+						wp_enqueue_style('mapa-ubicacion-display-style');
+						
+						
+				    
+				}
+				
+				
 			}
 		
 		}
@@ -58,32 +74,24 @@ class Ubicacion extends WP_Widget {
 	 * @instance
 	 */
 	function widget($args, $instance) {
-	 	
 		//Verificamos lo que el usuario eligió para indicar la ubicación(dirección o coordenadas)
      
-	 if($instance['indicar_ubicacion']){
-	 	//Obtenemos las coordenas de la ubicación indicada
-	 	$geocode=file_get_contents('http://maps.google.com/maps/api/geocode/json?address='.urlencode($instance['ubicacion_mensaje']).'&sensor=false');
-		$output= json_decode($geocode);
-		$lat = $output->results[0]->geometry->location->lat;
-		$long = $output->results[0]->geometry->location->lng;
-	 }else{
-	 	//Si no verificamos que haya seleccionado indicar las coordenadas y tomamos esas.
-	 	if($instance['indicar_coordenadas']){
-	 		$lat = $instance['coord_latitude'];
-			$long = $instance['coord_longitude'];
-	 	}
-	 }
+	$lat = get_option('latitud');
+	$lng = get_option('longitud');
+	$ruta = "http://maps.googleapis.com/maps/api/staticmap?center=".$lat.",".$lng."&zoom=16&size=250x250&maptype=roadmap&markers=color:green%7C".$lat.",".$lng."&sensor=false";
 
-
-	?>
-	<script type='text/javascript' src='http://maps.google.com/maps/api/js?sensor=false'></script>
+    ?>
+    
+    <!--
+	<script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
 	<script type='text/javascript'>
+	
 	//Función para crear el mapa
+		
 		function makeMap() {
 			//var latlng = new google.maps.LatLng(19.541384,-96.927052)
 			var latlng = new google.maps.LatLng(<?php echo $lat;?>,<?php echo $long;?>)
-			
+		
 			var myOptions = {
 				zoom: 17,
 				center: latlng,
@@ -93,7 +101,7 @@ class Ubicacion extends WP_Widget {
 				navigationControlOptions: {style: google.maps.NavigationControlStyle.SMALL},
 				mapTypeId: google.maps.MapTypeId.ROADMAP
 			};
-			var map = new google.maps.Map(document.getElementById('map_canvas'), myOptions);
+			var map = new google.maps.Map(document.getElementById('map_widget'), myOptions);
 				
 			var marker = new google.maps.Marker({
 				position: latlng,
@@ -104,10 +112,17 @@ class Ubicacion extends WP_Widget {
 			
 		}
 		window.onload = makeMap;
+	
+	
+	
 	</script>
-	<h3>UBICACIÓN</h3>
-	<div id='map_canvas'></div>
+	-->
+	<h3 class="widget-title">Ubicación</h3>
+	<img id='map_widget' src="<?php echo $ruta;?>"></img>
+	<a href="como-llegar">Como Llegar</a>
 	<?php
+	
+		
 	} // end widget
 	
 	/**
@@ -117,7 +132,6 @@ class Ubicacion extends WP_Widget {
 	 * @old_instance	The new instance of values to be generated via the update.
 	 */
 	function update($new_instance, $old_instance) {
-		
 		$instance = $old_instance;
 		
 		$instance['indicar_ubicacion'] = strip_tags(stripslashes($new_instance['indicar_ubicacion']));
@@ -125,6 +139,24 @@ class Ubicacion extends WP_Widget {
 		$instance['indicar_coordenadas'] = strip_tags(stripslashes($new_instance['indicar_coordenadas']));
 		$instance['coord_latitude'] = strip_tags(stripslashes($new_instance['coord_latitude']));
 		$instance['coord_longitude'] = strip_tags(stripslashes($new_instance['coord_longitude']));
+		
+		if($instance['indicar_ubicacion']){
+	 	//Obtenemos las coordenas de la ubicación indicada
+	 	$geocode=file_get_contents('http://maps.google.com/maps/api/geocode/json?address='.urlencode($instance['ubicacion_mensaje']).'&sensor=false');
+		$output= json_decode($geocode);
+		$lat = $output->results[0]->geometry->location->lat;
+		$lng = $output->results[0]->geometry->location->lng;
+	 	}else{
+	 	//Si no verificamos que haya seleccionado indicar las coordenadas y tomamos esas.
+	 	if($instance['indicar_coordenadas']){
+	 		$lat = $instance['coord_latitude'];
+			$lng = $instance['coord_longitude'];
+	 	}
+	 }
+	 update_option('latitud',$lat);
+	 update_option('longitud',$lng);
+	
+	 updatePageContent();
 		
 		return $instance;
 		
@@ -148,6 +180,7 @@ class Ubicacion extends WP_Widget {
 				
 			)
 		);
+		
 		
 		$indicar_ubicacion = strip_tags(stripslashes($instance['indicar_ubicacion']));
 		$ubicacion_mensaje = strip_tags(stripslashes($instance['ubicacion_mensaje']));
@@ -191,7 +224,83 @@ class Ubicacion extends WP_Widget {
 
 <?php
 	} // end form
+
 	
 } // end class
+
+
+	
+	function createPageContent()
+	{
+		
+		$lat = get_option('latitud');
+		$lng = get_option('longitud');
+		
+		$script = WP_PLUGIN_URL . '/ubicacion/javascript/funciones-ubicacion-widget.js';
+		$contenido ='<script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false">
+					</script><script type="text/javascript" src="http://www.google.com/jsapi?">
+					</script><script type="text/javascript" src="'.$script.'"></script>
+					<script type="text/javascript">
+						window.onload= function(){setCoordsDestination("'.$lat.'","'.$lng.'");}
+					</script>
+					<div id="mapa"></div>
+					Tipo de ruta: 
+					<select id="route_type">
+					       <option value="driving">Manejando</option>
+					       <option value="walking">Caminando</option>
+					</select>
+					Distancia aproximada: <span id="distance"></span>
+					Tiempo aproximado: <span id="time"></span>';
+					
+		return $contenido;
+	}
+
+
+
+	function onActivado()
+	{
+	$titulo = 'Como Llegar';
+
+	
+	$pagina = get_page_by_title($titulo);
+	$pagina_id = $pagina->ID;
+	//$ubicacion = new Ubicacion();
+
+	$page_content = createPageContent();
+		// Create post object
+  $my_post = array( 
+  	 'comment_status' => 'closed',
+     'post_title' => $titulo,
+     'post_content' => $page_content,
+     'post_status' => 'publish',
+     'post_author' => 1,
+     'post_type' => 'page'
+  );
+  if (!isset($pagina_id)){
+  	wp_insert_post( $my_post );
+  }
+	
+	}
+
+//Al desactivar el plugin se elimina la página
+	function onDesActivado(){
+	
+		$pagina = get_page_by_title('Como Llegar');
+		$pagina_id = $pagina->ID;
+		if (isset($pagina_id)){
+			wp_delete_post($pagina_id,true);
+		}
+	}
+	
+function updatePageContent(){
+	$pagina = get_page_by_title('Como Llegar');
+	$updated_post = array();
+	$updated_post['ID']= $pagina->ID;
+	$updated_post['post_content']=createPageContent();
+	wp_update_post($updated_post);
+}
+
+register_activation_hook( __FILE__,'onActivado');
+register_deactivation_hook(__FILE__,'onDesActivado');
 add_action('widgets_init', create_function('', 'register_widget("Ubicacion");'));
 ?>
